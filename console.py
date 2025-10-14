@@ -71,6 +71,10 @@ class Game:
             console.print('[red]ограничься в своих желаниях, значение выходит за допустимые рамки[/red]')
             return
 
+        if self.game_field[line][number]:
+            console.print('[red]тут занято![/red]')
+            return
+
         self.game_field[line][number] = value
 
     def clear_progress(self):
@@ -86,7 +90,8 @@ class Game:
         if all_right:
             console.print('все чотко, молодец !')
 
-# game = Game()
-# game.write_value_in_field(0, 0, 2)
-# print(game.game_field)
-# print(game.check_progress())
+game = Game()
+game.write_value_in_field(0, 0, 1)
+game.write_value_in_field(0, 0, 2)
+print(game.game_field)
+print(game.check_progress())
