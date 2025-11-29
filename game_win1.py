@@ -1,15 +1,25 @@
-from dataclasses import field
-
-import rich
+import copy
 from rich.console import Console
+from rich.text import Text
 
 console = Console()
 
 class Game:
     def __init__(self):
         self.game_field = self.get_isi_field()
-        self.clean_field = self.game_field
+        self.clean_field = copy.deepcopy(self.game_field)
         self.count_lines = len(self.game_field)
+        self.color_map  = {
+                            1: "#49251E",
+                            2: "#FFEDE3",
+                            3: "#FA4E00",
+                            4: "#CBE7F7",
+                            5: "#CC5500",
+                            6: "#59362E",
+                            7: "#C2E0F2",
+                            8: "#FFDDEE",
+                            9: "#FFF0DE",
+                            }
 
     def get_isi_field(self):
         return [[None],
@@ -80,8 +90,7 @@ class Game:
         self.game_field[line][number] = value
 
     def clear_progress(self):
-        """может не работать как надо"""
-        self.game_field = self.clean_field
+         self.game_field = copy.deepcopy(self.clean_field)
 
     def solve(self):
         """Рекурсивно ищем решение Филломино и выводим результат"""
@@ -101,7 +110,6 @@ class Game:
             self.game_field[line][number] = None
 
         return False
-
 
 
     def get_groups(self, value):
@@ -155,11 +163,42 @@ class Game:
         if all_right:
             console.print('все чотко, молодец !')
 
-    # def found_decision(self):
+
+    def format_cell(self, value):
+        if value is None:
+            return Text(".", style="dim")
+        color = self.color_map.get(value, "white")
+        return Text(str(value), style=color)
 
 
-game = Game()
-game.write_value_in_field(0, 0, 1)
-game.write_value_in_field(0, 0, 2)
-print(game.game_field)
-print(game.check_progress())
+    def get_correct_line(self, line_field):
+        result_line = Text("/")
+        for i in range(len(line_field)):
+            result_line.append(self.format_cell(line_field[i]))
+            if i % 2 == 0:
+                result_line.append("\\")
+            else:
+                result_line.append("/")
+        return result_line
+
+    def render_field(self):
+        count_item = len(self.game_field)
+        count_tab = count_item * 2 - 2
+        for i in range(count_item):
+            current_line = self.get_correct_line(self.game_field[i])
+            prefix = Text(" " * count_tab)
+            prefix.append(current_line)
+            console.print(prefix)
+            count_tab -= 2
+
+    def print_help_commands(self):
+        console.print(""
+        "- set v a b - вставляет значение v в ячейку с координатами a - номер линии, b - номер столбца\n"
+        "- check - проверяет правильность поля\n"
+        "- next - переходим на некст уровень\n"
+        "- help - выводит все возможные команды\n"
+        "- exit - заканчиваем играть\n")
+
+if __name__ == "__main__":
+    g = Game()
+    g.render_field()
