@@ -1,5 +1,5 @@
 
-from game_win1 import Game
+from fillomino import Game
 from rich.console import Console
 from rich.text import Text
 

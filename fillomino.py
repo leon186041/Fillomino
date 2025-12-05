@@ -179,7 +179,7 @@ class Game:
         return (best[0], best[1], best_domain)
 
     # Решение
-    def solve(self, max_solutions=1, debug=False):
+    def solve(self, max_solutions=1000, debug=False):
         # Решает головоломку методом бэктрекинга с использованием эвристики MRV
         self.count_lines = len(self.game_field)
         solutions = []

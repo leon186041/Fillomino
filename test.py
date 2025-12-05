@@ -1,6 +1,5 @@
-from game_win1 import Game
-
-game_field = [[None], [1, 2, 1], [3, 5, 5, 5, 4], [5, 5, 5, 5, 5, 5, 5]]
+from fillomino import Game
+import unittest
 
 
 def is_solution_correct(game_field):
@@ -14,21 +13,61 @@ def is_solution_correct(game_field):
     return is_valid and is_complete
 
 
-def test_field(game_field, n):
-    if n == 0:
-        return None
-    g = Game(game_field)
-    print("Начальное поле корректно?", g.check_valid())
-    # Ищем n решений, чтобы проверить, что они все верны
-    solutions = g.solve(max_solutions=n, debug=True)
-    print(f"\nНайдено решений: {len(solutions)}")
-    for i, sol in enumerate(solutions):
-        print(f"--- Решение {i+1} ---")
-        Game.print_field_arr(sol)
-        # Выводим финальный вердикт
-        correct_status = "Корректно" if is_solution_correct(sol) else "НЕКОРРЕКТНО"
-        print(f"Финальная проверка: {correct_status}\n")
+class TestFillomino(unittest.TestCase):
+    def _test_solver(self, initial_field, expected_min_solutions=1):
+        g = Game(initial_field)
+        # 1. Проверяем, что начальное поле валидно, если оно не пустое
+        if any(c is not None for row in initial_field for c in row):
+            self.assertTrue(g.check_valid(), "Начальное поле должно быть валидным.")
+        # Ищем решения
+        solutions = g.solve(max_solutions=expected_min_solutions, debug=True)
+        # 2. Проверяем минимальное ожидаемое количество решений
+        self.assertGreaterEqual(
+            len(solutions),
+            expected_min_solutions,
+            f"Ожидалось минимум {expected_min_solutions} решений, найдено {len(solutions)}.",
+        )
+        # 3. Проверяем каждое найденное решение
+        for sol in solutions:
+            self.assertTrue(
+                is_solution_correct(sol),
+                f"Найдено некорректное решение:\n{Game.print_field_arr(sol)}",
+            )
+
+        return solutions
+
+    def test_check_valid_size(self):
+        # Проверка: Размер группы > значения
+        field_invalid_size = [[1], [1, 5, 5], [5, 1, 5, 5, 5]]
+        g = Game(field_invalid_size)
+        self.assertFalse(g.check_valid())
+
+    def test_check_valid_contact(self):
+        # Проверка: Две группы одного значения касаются
+        field_invalid_contact = [[2], [5, 5, 2], [5, 5, 5, 5, 5]]
+        g = Game(field_invalid_contact)
+        self.assertFalse(g.check_valid())
+
+    def test_simple_fill(self):
+        field = [[1], [None, None, None], [None, None, None, None, None]]
+        self._test_solver(field, expected_min_solutions=1)
+
+    def test_no_contact_rule_solution(self):
+        # Два V = 2 на расстоянии, но могут быть легко соединены неправильным заполнением.
+        field = [[2], [None, None, None], [2, None, None, None, None]]
+        # Solve должен гарантировать, что эти 2 группы останутся раздельными или будут окружены другими числами.
+        self._test_solver(field, expected_min_solutions=1)
+
+    def test_complex_unique_solution(self):
+        # Проверка: Сложный случай, требующий бэктрекинга
+        field = [[None], [3, None, None], [1, None, None, 2, None]]
+        self._test_solver(field, expected_min_solutions=1)
+
+    def test_multiple_solutions(self):
+        # Проверка: Поиск нескольких решений для пустого поля
+        field = [[None], [None, None, None], [None, None, None, None, None]]
+        self._test_solver(field, expected_min_solutions=5)
 
 
-game_field = [[1], [None, None, None], [None, None, None, None, None]]
-test_field(game_field, 10)
+if __name__ == "__main__":
+    unittest.main()
