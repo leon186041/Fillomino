@@ -1,86 +1,34 @@
-# def get_neighbors(line, number, game_field, count_lines):
-#     """найдем координаты всех соседей ячейки"""
-#     if number % 2 == 0:
-#         deltas = [(1, 1), (0, -1), (0, 1)]
-#     else:
-#         deltas = [(-1, -1), (0, -1), (0, 1)]
+from game_win1 import Game
 
-#     neighbors = []
-#     for dline, dnum in deltas:
-#         new_line, new_num = line + dline, number + dnum
-#         if 0 <= new_line < count_lines and 0 <= new_num < len(game_field[new_line]):
-#             neighbors.append((new_line, new_num))
-#     return neighbors
+game_field = [[None], [1, 2, 1], [3, 5, 5, 5, 4], [5, 5, 5, 5, 5, 5, 5]]
 
 
-# def get_count_value(value, game_field, count_lines):
-#     visited = set()
-#     groups = []
+def is_solution_correct(game_field):
+    g = Game(game_field)
+    g.count_lines = len(game_field)
+    # 1. Проверяем валидность правил Fillomino
+    is_valid = g.check_valid()
+    # 2. Проверяем, что нет пустых клеток (т.е., поле полностью заполнено)
+    is_complete = g.find_empty() is None
 
-#     def dfs(line, number):
-#         stack = [(line, number)]
-#         size = []
-#         while stack:
-#             l, n = stack.pop()
-#             if (l, n) in visited:
-#                 continue
-#             visited.add((l, n))
-#             size.append((l,n))
-#             for nl, nn in get_neighbors(l, n, game_field, count_lines):
-#                 if game_field[nl][nn] == value and (nl, nn) not in visited:
-#                     stack.append((nl, nn))
-#         return size
+    return is_valid and is_complete
 
-#     for line in range(count_lines):
-#         for number in range(len(game_field[line])):
-#             if game_field[line][number] == value and (line, number) not in visited:
-#                 groups.append(dfs(line, number))
 
-#     return groups
-# def no_same_touch(game_field, count_lines):
-#         """Проверяем, что разные регионы с одинаковыми числами не касаются по сторонам"""
-#         for line in range(count_lines):
-#             for number in range(len(game_field[line])):
-#                 value = game_field[line][number]
-#                 if value is None:
-#                     continue
+def test_field(game_field, n):
+    if n == 0:
+        return None
+    g = Game(game_field)
+    print("Начальное поле корректно?", g.check_valid())
+    # Ищем n решений, чтобы проверить, что они все верны
+    solutions = g.solve(max_solutions=n, debug=True)
+    print(f"\nНайдено решений: {len(solutions)}")
+    for i, sol in enumerate(solutions):
+        print(f"--- Решение {i+1} ---")
+        Game.print_field_arr(sol)
+        # Выводим финальный вердикт
+        correct_status = "Корректно" if is_solution_correct(sol) else "НЕКОРРЕКТНО"
+        print(f"Финальная проверка: {correct_status}\n")
 
-#                 for nl, nn in get_neighbors(line, number, game_field, count_lines):
-#                     neighbor_value = game_field[nl][nn]
-#                     if neighbor_value is None:
-#                         continue
 
-#                     if neighbor_value == value:
-#                         groups = get_count_value(value, game_field, count_lines)
-#                         if len(groups) > 1:
-#                             found_same_group = any(
-#                                 (line, number) in group and (nl, nn) in group
-#                                 for group in groups
-#                             )
-#                             if not found_same_group:
-#                                 return False
-#         return True
-
-game_field = [[None],
-                [1, 2, 1],
-                [3, 5, 5, 5, 4],
-                [5, 5, 5, 5, 5, 5, 5]]
-# count_lines = len(game_field)
-# print(no_same_touch(game_field, count_lines))
-# print(get_count_value(5, game_field, count_lines))
-def get_correct_line(line_field):
-    result_line = "/"
-    for i in range(len(line_field)):
-        if line_field[i] is None:
-            current_item = "."
-        else:
-            current_item = str(line_field[i])
-        
-        if i % 2 == 0:
-            result_line += f"{current_item}\\"
-        else:
-            result_line += f"{current_item}/"
-
-    return result_line
-
-print(get_correct_line(game_field[2]))
+game_field = [[1], [None, None, None], [None, None, None, None, None]]
+test_field(game_field, 10)
