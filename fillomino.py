@@ -1,14 +1,26 @@
 import copy
 
-
 class Game:
     def __init__(self, field):
         self.game_field = copy.deepcopy(field)
         self.count_lines = len(self.game_field)
+        self.limits = {} # Словарь для хранения {(i, j): limit_v}
+
+        # Анализ поля: ИЗВЛЕЧЕНИЕ и УДАЛЕНИЕ строковых ограничений
+        for i in range(self.count_lines):
+            for j in range(len(self.game_field[i])):
+                cell = self.game_field[i][j]
+                if isinstance(cell, str) and cell.startswith('<'):
+                    try:
+                        limit_v = int(cell[1:])
+                        self.limits[(i, j)] = limit_v # Сохраняем ограничение
+                        self.game_field[i][j] = None # Заменяем на None для заполнения
+                    except ValueError:
+                        pass 
 
     # Топология соседей
     def get_neighbors(self, i, j):
-        # Возвращает список 6 координат соседей для ячейки
+        # Возвращает список 6 координат соседей для ячейки (код из вашего запроса)
         neighbors = []
         if i < 0 or i >= self.count_lines or j < 0 or j >= len(self.game_field[i]):
             return neighbors
@@ -41,10 +53,13 @@ class Game:
 
     # Собрать одну компоненту
     def collect_group(self, i, j, visited=None):
-        # Собирает все связанные ячейки с одинаковым значением в одну группу (BFS)
         if visited is None:
             visited = set()
         value = self.game_field[i][j]
+        # Для Fillomino группа собирается только по числовому значению.
+        if not isinstance(value, int):
+             return []
+        
         queue = [(i, j)]
         visited.add((i, j))
         group = []
@@ -57,104 +72,111 @@ class Game:
                     queue.append((nx, ny))
         return group
 
-    # Валидация поля
+    # Валидация поля (МОДИФИЦИРОВАНО для Level 2)
     def check_valid(self):
-        """
-        Проверяет поле на соответствие правилам Fillomino:
-        1. Размер полиомино не превышает его значение (v).
-        2. В полном поле размер точно равен v.
-        3. Разные полиомино с одинаковым v не касаются по стороне.
-        """
         self.count_lines = len(self.game_field)
-        field_complete = all(c is not None for row in self.game_field for c in row)
-        # Используем внешний visited для отслеживания обработанных групп
+        field_complete = self.find_empty() is None
         visited = set()
+
         for i in range(self.count_lines):
             for j in range(len(self.game_field[i])):
                 v = self.game_field[i][j]
+                
                 if v is None or (i, j) in visited:
                     continue
-                # Собираем группу, используя локальный visited для предотвращения зацикливания
-                local_visited = set()
-                group = self.collect_group(i, j, visited=local_visited)
-                # Добавляем ячейки в общий visited после сбора
-                visited.update(group)
+                
+                group = self.collect_group(i, j, visited=visited) # Используем общий visited
                 size = len(group)
-                # 2. Ограничение размера
+                
+                # 1. Обычные правила Fillomino: Размер <= V
                 if size > v:
                     return False
                 if field_complete and size != v:
                     return False
-                # 3. Проверка на несоприкосновение
+                
+                # 2. Проверка ограничений Level 2: size < Limit
                 for (x, y) in group:
+                    # Если любая ячейка в группе имела ограничение <V
+                    if (x, y) in self.limits:
+                        limit_v = self.limits[(x, y)]
+                        # Проверка: Размер должен быть строго меньше Limit
+                        if size >= limit_v: 
+                            return False 
+                    
+                    # 3. Проверка на несоприкосновение
                     for nx, ny in self.get_neighbors(x, y):
                         if (nx, ny) not in group:
                             neigh_val = self.game_field[nx][ny]
-                            # Если сосед имеет то же значение V, но не принадлежит группе
+                            # Нельзя касаться другой группы с тем же значением
                             if neigh_val == v:
                                 return False
-
         return True
 
     # Поиск пустой клетки
     def find_empty(self):
-        # Возвращает координаты первой пустой клетки или None, если поле заполнено
         for i in range(self.count_lines):
             for j in range(len(self.game_field[i])):
                 if self.game_field[i][j] is None:
                     return (i, j)
         return None
 
-    # Локальный анализ
+    # Локальный анализ (МОДИФИЦИРОВАНО для Level 2)
     def possible_values_for_cell(self, i, j):
-        """
-        Вычисляет множество возможных значений для пустой ячейки (i,j)
-        на основе локального правила превышения размера полиомино.
-        """
         max_size = (
-            max(c for row in self.game_field for c in row if c is not None)
-            if any(c is not None for row in self.game_field for c in row)
+            max(c for row in self.game_field for c in row if isinstance(c, int))
+            if any(isinstance(c, int) for row in self.game_field for c in row)
             else 1
         )
         max_size = max(max_size, len(self.game_field[-1]))
-
+        
         vals = set(range(1, max_size + 1))
         to_remove = set()
 
+        all_relevant_limits = []
+        
+        # 1.1. Ограничение в самой ячейке (i, j)
+        if (i, j) in self.limits:
+            all_relevant_limits.append(self.limits[(i, j)])
+            
         neighbor_group_roots = {}
         for nx, ny in self.get_neighbors(i, j):
-            neigh_val = self.game_field[nx][ny]
-            if neigh_val is None:
-                continue
+             # 1.2. Ограничения в соседних ячейках
+             if (nx, ny) in self.limits:
+                 all_relevant_limits.append(self.limits[(nx, ny)])
 
-            comp = self.collect_group(nx, ny, visited=set())
-            comp_key = tuple(sorted(comp))
-
-            if comp_key not in neighbor_group_roots:
-                neighbor_group_roots[comp_key] = set(comp)
+             # 1.3. Сбор корней существующих групп
+             if isinstance(self.game_field[nx][ny], int):
+                comp = self.collect_group(nx, ny, visited=set())
+                comp_key = tuple(sorted(comp))
+                if comp_key not in neighbor_group_roots:
+                    neighbor_group_roots[comp_key] = set(comp)
 
         for v in list(vals):
-            total_size = 1
-
+            total_size = 1 # Ячейка (i, j)
+            
+            # 2. Расчет размера потенциальной группы V
             for group_set in neighbor_group_roots.values():
                 root_coords = list(group_set)[0]
                 root_val = self.game_field[root_coords[0]][root_coords[1]]
-
                 if root_val == v:
                     total_size += len(group_set)
 
+            # 3. Проверка 1: Нарушение Fillomino (total_size > V)
             if total_size > v:
                 to_remove.add(v)
+                continue
+            
+            # 4. Проверка 2: Нарушение ограничения Level 2 (total_size >= Limit)
+            for limit_v in all_relevant_limits:
+                 if total_size >= limit_v:
+                      to_remove.add(v)
+                      break
 
         vals -= to_remove
         return vals
 
     # Выбрать клетку
     def find_best_cell(self):
-        """
-        Находит пустую ячейку с наименьшим доменом возможных значений (MRV)
-        для повышения эффективности бэктрекинга.
-        """
         best = None
         best_domain = set()
         min_domain_size = float("inf")
@@ -180,7 +202,6 @@ class Game:
 
     # Решение
     def solve(self, max_solutions=1000, debug=False):
-        # Решает головоломку методом бэктрекинга с использованием эвристики MRV
         self.count_lines = len(self.game_field)
         solutions = []
         steps = 0
@@ -204,8 +225,13 @@ class Game:
                 steps += 1
                 self.game_field[i][j] = v
 
-                if self.check_valid():
-                    backtrack()
+                # Не используем check_valid здесь, чтобы не замедлять поиск. 
+                # check_valid будет вызван только при полном заполнении поля.
+                # Если же check_valid тут нужен для раннего отсева:
+                # if self.check_valid(): 
+                #    backtrack()
+                # Но это сильно замедлит. Оставляем только проверку MRV в possible_values.
+                backtrack()
 
                 self.game_field[i][j] = None
 
@@ -222,5 +248,6 @@ class Game:
     def print_field_arr(field):
         max_len = len(field[-1])
         for r in field:
-            print(" " * (max_len - len(r)) + str(r))
+            r_str = [str(c) if c is not None else ' ' for c in r]
+            print(" " * (max_len - len(r)) + str(r_str).replace("'", "").replace("[", "").replace("]", "").replace(",", " "))
         print("-" * 20)
