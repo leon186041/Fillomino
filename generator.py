@@ -1,4 +1,8 @@
 from fillomino import Game
+import random
+from rich.console import Console
+
+console = Console()
 
 lvl1_simple = [
     [1], 
@@ -56,22 +60,67 @@ generator = [
     lvl2_medium_2,
 ]
 
+gen_dick = {"lvl1_simple" : lvl1_simple,
+        "lvl1_simple_2" : lvl1_simple_2,
+        "lvl1_medium" : lvl1_medium,
+        "lvl1_hard" : lvl1_hard,
+        "lvl2_simple" : lvl2_simple,
+        "lvl2_simple_2" : lvl2_simple_2,
+        "lvl2_medium" : lvl2_medium,
+        "lvl2_medium_2" : lvl2_medium_2}
+
 
 def generate_puzzle(generator):
-    for i, puzzle in enumerate(generator):
-        print_solution(puzzle, f"Головоломка #{i+1}")
+    random_game = random.choice(generator)
+    print_solution(random_game, "Головоломки")
 
 
-def print_solution(game_field, name_puzzle):
+def print_solution(game_field, flag, name = None):
     g = Game(game_field)
     solution = g.solve(max_solutions=1)
 
-    print(f"\n--- Решение {name_puzzle} ---")
+    if flag:
+        print(f"\n--- Головоломка {name} ---")
+    else:
+        print(f"\n--- Решение ---")
     if solution:
-        Game.print_field_arr(solution[0])
+        if flag:
+            Game.print_field_arr(game_field)
+        else:
+            Game.print_field_arr(solution[0])
     else:
         print("Решение не найдено.")
 
 
 if __name__ == "__main__":
-    generate_puzzle(generator)
+    list_fil = ["lvl1_simple",
+        "lvl1_simple_2",
+        "lvl1_medium",
+        "lvl1_hard",
+        "lvl2_simple",
+        "lvl2_simple_2",
+        "lvl2_medium",
+        "lvl2_medium_2"]
+    
+    while True:
+        console.print("help - вывод команд")
+        comand = console.input("Введите команду: ")
+        if comand is None:
+            continue
+        cmd = comand.lower()
+        if cmd == "help":
+            console.print("all_fil - вывести все филомино")
+            console.print("name_field - выводит решение головоломки name_field")
+            
+        elif cmd == "all_fil":
+            for puzzle in generator:
+                for key, value in gen_dick.items():  
+                    if value == puzzle: 
+                        print_solution(puzzle, True, key)
+                        
+        elif cmd in list_fil:
+            print_solution(gen_dick[cmd], False)
+        
+        else:
+            console.print("хз не шарю чо за команда")
+    

@@ -4,23 +4,20 @@ class Game:
     def __init__(self, field):
         self.game_field = copy.deepcopy(field)
         self.count_lines = len(self.game_field)
-        self.limits = {} # Словарь для хранения {(i, j): limit_v}
+        self.limits = {}
 
-        # Анализ поля: ИЗВЛЕЧЕНИЕ и УДАЛЕНИЕ строковых ограничений
         for i in range(self.count_lines):
             for j in range(len(self.game_field[i])):
                 cell = self.game_field[i][j]
                 if isinstance(cell, str) and cell.startswith('<'):
                     try:
                         limit_v = int(cell[1:])
-                        self.limits[(i, j)] = limit_v # Сохраняем ограничение
-                        self.game_field[i][j] = None # Заменяем на None для заполнения
+                        self.limits[(i, j)] = limit_v
+                        self.game_field[i][j] = None
                     except ValueError:
                         pass 
 
-    # Топология соседей
     def get_neighbors(self, i, j):
-        # Возвращает список 6 координат соседей для ячейки (код из вашего запроса)
         neighbors = []
         if i < 0 or i >= self.count_lines or j < 0 or j >= len(self.game_field[i]):
             return neighbors
@@ -51,12 +48,10 @@ class Game:
 
         return neighbors
 
-    # Собрать одну компоненту
     def collect_group(self, i, j, visited=None):
         if visited is None:
             visited = set()
         value = self.game_field[i][j]
-        # Для Fillomino группа собирается только по числовому значению.
         if not isinstance(value, int):
              return []
         
@@ -72,7 +67,6 @@ class Game:
                     queue.append((nx, ny))
         return group
 
-    # Валидация поля (МОДИФИЦИРОВАНО для Level 2)
     def check_valid(self):
         self.count_lines = len(self.game_field)
         field_complete = self.find_empty() is None
@@ -85,34 +79,27 @@ class Game:
                 if v is None or (i, j) in visited:
                     continue
                 
-                group = self.collect_group(i, j, visited=visited) # Используем общий visited
+                group = self.collect_group(i, j, visited=visited)
                 size = len(group)
                 
-                # 1. Обычные правила Fillomino: Размер <= V
                 if size > v:
                     return False
                 if field_complete and size != v:
                     return False
                 
-                # 2. Проверка ограничений Level 2: size < Limit
                 for (x, y) in group:
-                    # Если любая ячейка в группе имела ограничение <V
                     if (x, y) in self.limits:
                         limit_v = self.limits[(x, y)]
-                        # Проверка: Размер должен быть строго меньше Limit
                         if size >= limit_v: 
                             return False 
                     
-                    # 3. Проверка на несоприкосновение
                     for nx, ny in self.get_neighbors(x, y):
                         if (nx, ny) not in group:
                             neigh_val = self.game_field[nx][ny]
-                            # Нельзя касаться другой группы с тем же значением
                             if neigh_val == v:
                                 return False
         return True
 
-    # Поиск пустой клетки
     def find_empty(self):
         for i in range(self.count_lines):
             for j in range(len(self.game_field[i])):
@@ -120,7 +107,6 @@ class Game:
                     return (i, j)
         return None
 
-    # Локальный анализ (МОДИФИЦИРОВАНО для Level 2)
     def possible_values_for_cell(self, i, j):
         max_size = (
             max(c for row in self.game_field for c in row if isinstance(c, int))
@@ -134,17 +120,14 @@ class Game:
 
         all_relevant_limits = []
         
-        # 1.1. Ограничение в самой ячейке (i, j)
         if (i, j) in self.limits:
             all_relevant_limits.append(self.limits[(i, j)])
             
         neighbor_group_roots = {}
         for nx, ny in self.get_neighbors(i, j):
-             # 1.2. Ограничения в соседних ячейках
              if (nx, ny) in self.limits:
                  all_relevant_limits.append(self.limits[(nx, ny)])
 
-             # 1.3. Сбор корней существующих групп
              if isinstance(self.game_field[nx][ny], int):
                 comp = self.collect_group(nx, ny, visited=set())
                 comp_key = tuple(sorted(comp))
@@ -152,21 +135,18 @@ class Game:
                     neighbor_group_roots[comp_key] = set(comp)
 
         for v in list(vals):
-            total_size = 1 # Ячейка (i, j)
+            total_size = 1
             
-            # 2. Расчет размера потенциальной группы V
             for group_set in neighbor_group_roots.values():
                 root_coords = list(group_set)[0]
                 root_val = self.game_field[root_coords[0]][root_coords[1]]
                 if root_val == v:
                     total_size += len(group_set)
 
-            # 3. Проверка 1: Нарушение Fillomino (total_size > V)
             if total_size > v:
                 to_remove.add(v)
                 continue
             
-            # 4. Проверка 2: Нарушение ограничения Level 2 (total_size >= Limit)
             for limit_v in all_relevant_limits:
                  if total_size >= limit_v:
                       to_remove.add(v)
@@ -175,7 +155,6 @@ class Game:
         vals -= to_remove
         return vals
 
-    # Выбрать клетку
     def find_best_cell(self):
         best = None
         best_domain = set()
@@ -200,7 +179,7 @@ class Game:
             return (None, None, set())
         return (best[0], best[1], best_domain)
 
-    # Решение
+
     def solve(self, max_solutions=1000, debug=False):
         self.count_lines = len(self.game_field)
         solutions = []
@@ -224,13 +203,6 @@ class Game:
             for v in sorted(domain):
                 steps += 1
                 self.game_field[i][j] = v
-
-                # Не используем check_valid здесь, чтобы не замедлять поиск. 
-                # check_valid будет вызван только при полном заполнении поля.
-                # Если же check_valid тут нужен для раннего отсева:
-                # if self.check_valid(): 
-                #    backtrack()
-                # Но это сильно замедлит. Оставляем только проверку MRV в possible_values.
                 backtrack()
 
                 self.game_field[i][j] = None
@@ -243,11 +215,9 @@ class Game:
             print(f"Завершено. Шагов: {steps}, решений: {len(solutions)}")
         return solutions
 
-    # Вспомогательная: печать решения
-    @staticmethod
     def print_field_arr(field):
         max_len = len(field[-1])
         for r in field:
-            r_str = [str(c) if c is not None else ' ' for c in r]
+            r_str = [str(c) if c is not None else '.' for c in r]
             print(" " * (max_len - len(r)) + str(r_str).replace("'", "").replace("[", "").replace("]", "").replace(",", " "))
         print("-" * 20)
