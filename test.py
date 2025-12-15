@@ -60,6 +60,42 @@ class TestFillomino(unittest.TestCase):
         # Проверка: Поиск нескольких решений для пустого поля
         field = [[None], [None, None, None], [None, None, None, None, None]]
         self._test_solver(field, expected_min_solutions=5)
+        
+    def test_check_valid_size_2(self):
+        # Проверка: Размер группы > значения
+        field_invalid_size = [['<2'], ['<2', 5, 5], [5, 5, 5, 5, 5]]
+        g = Game(field_invalid_size)
+        self.assertFalse(g.check_valid())
+
+    def test_check_valid_contact_2(self):
+        # Проверка: Две группы одного значения касаются
+        field_invalid_contact = [[None], [None, 1, 1], ['<2', '<2', '<2', '<2', '<2']]
+        g = Game(field_invalid_contact)
+        self.assertFalse(g.check_valid())
+    
+    def test_check_valid_contact_solve_2(self):
+        # Проверка: Две группы одного значения касаются
+        field_invalid_contact = [[None], [None, 1, 1], ['<2', '<2', '<2', '<2', '<2']]
+        g = Game(field_invalid_contact)
+        solve = g.solve()
+        is_empty = False
+        if solve == []:
+            is_empty = True
+        self.assertTrue(is_empty)
+
+    def test_simple_fill_2(self):
+        field = [["<4"], [None, "<3", None], [None, None, None, None, None]]
+        self._test_solver(field, expected_min_solutions=1)
+
+    def test_no_contact_rule_solution_2(self):
+        # Два <2 на расстоянии, но могут быть легко соединены неправильным заполнением.
+        field = [['<2'], [None, None, None], ['<2', None, None, None, None]]
+        self._test_solver(field, expected_min_solutions=1)
+
+    def test_multiple_solutions_2(self):
+        # Проверка: Поиск нескольких решений для почти пустого поля
+        field = [['<2'], [None, None, None], [None, None, None, None, None]]
+        self._test_solver(field, expected_min_solutions=5)
 
 
 if __name__ == "__main__":
